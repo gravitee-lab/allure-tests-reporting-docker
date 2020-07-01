@@ -892,7 +892,7 @@ If you want to use docker without sudo, read following links:
 
 ### Build image
 ```sh
-docker build -t allure-release -f docker/archive/Dockerfile --build-arg RELEASE=2.13.5 .
+docker build -t allure-release -f docker-custom/Dockerfile.bionic-custom --build-arg ALLURE_RELEASE=2.13.5 .
 ```
 ### Run container
 ```sh

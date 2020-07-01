@@ -18,8 +18,8 @@ RUN apt-get install python3-pip -y
 RUN apt-get install unzip -y
 RUN ln -s `which python3` /usr/bin/python
 RUN pip3 install --upgrade pip
-RUN pip install -Iv setuptools==47.1.1 wheel==0.34.2 waitress==1.4.4
-RUN pip install -Iv Flask==1.1.2 flask-swagger-ui==3.25.0 requests==2.23.0
+RUN pip install -Iv setuptools==47.1.1 wheel==0.34.2 pylint==2.5.3 waitress==1.4.4
+RUN pip install -Iv Flask==1.1.2 Flask-Cors==1.10.3 Flask-JWT-Extended==3.24.1 flask-swagger-ui==3.25.0 requests==2.23.0
 RUN apt-get install --reinstall procps -y
 RUN apt-get install wget -y
 
@@ -70,6 +70,7 @@ RUN ln -sf $RESULTS_DIRECTORY $DEFAULT_PROJECT_RESULTS
 RUN ln -sf $DEFAULT_PROJECT_REPORTS/latest $REPORT_DIRECTORY
 
 RUN chown -R allure:allure $ROOT
+RUN pylint --rcfile=$ROOT/allure-docker-api/.pylintrc $ROOT/allure-docker-api
 
 VOLUME [ "$RESULTS_DIRECTORY" ]
 

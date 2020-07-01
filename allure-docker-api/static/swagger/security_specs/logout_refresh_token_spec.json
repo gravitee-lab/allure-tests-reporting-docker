@@ -1,0 +1,30 @@
+{
+    "delete":{
+       "tags":[
+          "Security"
+       ],
+       "summary":"Logout Refresh Token (from version 2.13.5)",
+       "produces":[
+          "application/json"
+       ],
+       "responses":{
+          "200":{
+             "description":"OK",
+             "schema":{
+                "$ref":"#/components/schemas/response"
+             }
+          },
+          "401":{
+             "description":"UNAUTHORIZED",
+             "schema":{
+                "$ref":"#/components/schemas/response"
+             }
+          }
+       },
+       "security":[
+          {
+             "bearerAuth":[]
+          }
+       ]
+    }
+ }

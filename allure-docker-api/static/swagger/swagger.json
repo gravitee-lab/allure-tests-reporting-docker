@@ -19,7 +19,15 @@
    ],
    "tags":[
       {
+         "name":"Info",
+         "description":""
+      },
+      {
          "name":"Action",
+         "description":""
+      },
+      {
+         "name":"Project",
          "description":""
       }
    ],
@@ -46,6 +54,32 @@
             }
          }
       },
+      "/swagger":{
+         "get":{
+            "tags":[
+               "Info"
+            ],
+            "summary":"Get Swagger API Doc",
+            "responses":{
+               "200":{
+                  "description":"OK"
+               }
+            }
+         }
+      },
+      "/swagger.json":{
+         "get":{
+            "tags":[
+               "Info"
+            ],
+            "summary":"Get Swagger API Specification",
+            "responses":{
+               "200":{
+                  "description":"OK"
+               }
+            }
+         }
+      },      
       "/latest-report":{
          "get":{
             "tags":[
