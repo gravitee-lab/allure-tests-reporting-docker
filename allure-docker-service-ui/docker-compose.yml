@@ -1,0 +1,18 @@
+version: '3'
+services:
+  allure:
+    image: "allure-release"
+    #image: "frankescobar/allure-docker-service:beta"
+    environment:
+      DEV_MODE: 1
+      CHECK_RESULTS_EVERY_SECONDS: NONE
+      KEEP_HISTORY: "TRUE"
+      #SECURITY_USER: username
+      #SECURITY_PASS: password
+    ports:
+      - "5050:5050"
+    volumes:
+      #- ${PWD}/allure-results:/app/allure-results
+      #- ${PWD}/allure-reports:/app/default-reports
+      - ${PWD}/projects:/app/projects
+      - ${PWD}/build:/app/allure-docker-api/static/ui

@@ -23,7 +23,8 @@ from flask.logging import create_logger
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask_jwt_extended import (
     JWTManager, jwt_required, create_access_token, create_refresh_token,
-    get_jwt_identity, verify_jwt_in_request, jwt_refresh_token_required, get_raw_jwt
+    get_jwt_identity, verify_jwt_in_request, jwt_refresh_token_required, get_raw_jwt,
+    set_access_cookies, set_refresh_cookies, unset_jwt_cookies
 )
 
 dictConfig({
@@ -49,6 +50,8 @@ app.config['JWT_SECRET_KEY'] = os.urandom(16)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
+app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+app.config['JWT_COOKIE_CSRF_PROTECT'] = True
 
 DEV_MODE = 0
 HOST = '0.0.0.0'
@@ -69,6 +72,7 @@ STATIC_CONTENT = os.environ['STATIC_CONTENT']
 PROJECTS_DIRECTORY = os.environ['STATIC_CONTENT_PROJECTS']
 EMAILABLE_REPORT_FILE_NAME = os.environ['EMAILABLE_REPORT_FILE_NAME']
 ORIGIN = 'api'
+SECURITY_SPECS_PATH = 'swagger/security_specs'
 
 REPORT_INDEX_FILE = 'index.html'
 DEFAULT_TEMPLATE = 'default.html'
@@ -105,6 +109,7 @@ if "TLS" in os.environ:
         IS_ITLS = int(os.environ['TLS'])
         if IS_ITLS == 1:
             URL_SCHEME = 'https'
+            app.config['JWT_COOKIE_SECURE'] = True
             LOGGER.info('Enabling TLS=%s', IS_ITLS)
     except Exception as ex:
         LOGGER.error('Wrong env var value. Setting TLS=0 by default')
@@ -139,39 +144,33 @@ def get_file_as_string(path_file):
     return content
 
 def generate_security_swagger_specification():
-    specs_path = 'swagger/security_specs'
-    login_endpoint_spec = get_file_as_string(
-        "{}/{}/login_spec.json".format(STATIC_CONTENT, specs_path))
-    logout_endpoint_spec = get_file_as_string(
-        "{}/{}/logout_spec.json".format(STATIC_CONTENT, specs_path))
-    logout_refresh_token_endpoint_spec = get_file_as_string(
-        "{}/{}/logout_refresh_token_spec.json".format(STATIC_CONTENT, specs_path))
-    refresh_endpoint_spec = get_file_as_string(
-        "{}/{}/refresh_spec.json".format(STATIC_CONTENT, specs_path))
-    security_schemes = get_file_as_string(
-        "{}/{}/security_schemes.json".format(STATIC_CONTENT, specs_path))
-    login_scheme = get_file_as_string(
-        "{}/{}/login_scheme.json".format(STATIC_CONTENT, specs_path))
-    security_response = get_file_as_string(
-        "{}/{}/security_response.json".format(STATIC_CONTENT, specs_path))
-
     try:
+        security_specs = {}
+        for file in os.listdir("{}/{}/".format(STATIC_CONTENT, SECURITY_SPECS_PATH)):
+            file_path = "{}/{}/{}".format(STATIC_CONTENT, SECURITY_SPECS_PATH, file)
+            security_specs[file] = get_file_as_string(file_path)
+
         with open("{}/swagger/swagger.json".format(STATIC_CONTENT)) as json_file:
             data = json.load(json_file)
+            logout_refresh_token = security_specs['logout_refresh_token_spec.json']
+            #security_schemes = security_specs['security_schemes.json']
+            login_scheme = security_specs['login_scheme.json']
 
-            data['tags'].insert(1, {"name":"Security", "description":""})
-            data['paths']['/login'] = eval(login_endpoint_spec) #pylint: disable=eval-used
-            data['paths']['/logout'] = eval(logout_endpoint_spec) #pylint: disable=eval-used
-            data['paths']['/logout-refresh-token'] = eval(logout_refresh_token_endpoint_spec) #pylint: disable=eval-used
-            data['paths']['/refresh'] = eval(refresh_endpoint_spec) #pylint: disable=eval-used
-            data['components']['securitySchemes'] = eval(security_schemes) #pylint: disable=eval-used
+            data['tags'].insert(1, eval(security_specs['security_tags.json'])) #pylint: disable=eval-used
+            data['paths']['/login'] = eval(security_specs['login_spec.json']) #pylint: disable=eval-used
+            data['paths']['/refresh'] = eval(security_specs['refresh_spec.json']) #pylint: disable=eval-used
+            data['paths']['/logout'] = eval(security_specs['logout_spec.json']) #pylint: disable=eval-used
+            data['paths']['/logout-refresh-token'] = eval(logout_refresh_token) #pylint: disable=eval-used
+            #data['components']['securitySchemes'] = eval(security_schemes) #pylint: disable=eval-used
             data['components']['schemas']['login'] = eval(login_scheme) #pylint: disable=eval-used
 
             ensure_tags = ['Action', 'Project']
+            security_type = security_specs['security_type.json']
+            security_response = security_specs['security_response.json']
             for path in data['paths']:
                 for method in data['paths'][path]:
                     if set(ensure_tags) & set(data['paths'][path][method]['tags']):
-                        data['paths'][path][method]['security'] = [{"bearerAuth": []}]
+                        data['paths'][path][method]['security'] = eval(security_type) #pylint: disable=eval-used
                         data['paths'][path][method]['responses']['401'] = eval(security_response) #pylint: disable=eval-used
 
         with open("{}/swagger/swagger_security.json".format(STATIC_CONTENT), 'w') as outfile:
@@ -268,13 +267,20 @@ def login_endpoint():
         if SECURITY_USER != username.lower() or SECURITY_PASS != password:
             return jsonify({'meta_data': {'message' : 'Invalid username/password'}}), 401
 
+        access_token = create_access_token(identity=SECURITY_USER)
+        refresh_token = create_refresh_token(identity=SECURITY_USER)
+
         json_body = {
             'data': {
-                'access_token': create_access_token(identity=SECURITY_USER),
-                'refresh_token': create_refresh_token(identity=SECURITY_USER)},
+                'access_token': access_token,
+                'refresh_token': refresh_token
+            },
             'meta_data': {'message' : 'Successfully logged'}
         }
-        return jsonify(json_body), 200
+        resp = jsonify(json_body)
+        set_access_cookies(resp, access_token)
+        set_refresh_cookies(resp, refresh_token)
+        return resp, 200
     except Exception as ex:
         body = {
             'meta_data': {
@@ -299,22 +305,27 @@ def logout_endpoint():
 def logout_refresh_token_endpoint():
     jti = get_raw_jwt()['jti']
     blacklist.add(jti)
-    return jsonify({'meta_data': {'message' : 'Successfully logged out'}}), 200
+    resp = jsonify({'meta_data': {'message' : 'Successfully logged out'}})
+    unset_jwt_cookies(resp)
+    return resp, 200
 
 @app.route('/refresh', methods=['POST'], strict_slashes=False)
 @app.route('/allure-docker-service/refresh', methods=['POST'], strict_slashes=False)
 @jwt_refresh_token_required
 def refresh_endpoint():
     current_user = get_jwt_identity()
+    access_token = create_access_token(identity=current_user)
     json_body = {
         'data': {
-            'access_token': create_access_token(identity=current_user)
+            'access_token': access_token
         },
         'meta_data': {
             'message' : 'Successfully token obtained'
         }
     }
-    return jsonify(json_body), 200
+    resp = jsonify(json_body)
+    set_access_cookies(resp, access_token)
+    return resp, 200
 ### end Security Endpoints Section
 
 @app.route("/", strict_slashes=False)
