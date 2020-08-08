@@ -15,7 +15,7 @@
     "module-alias": "2.1.0",
     "chai": "4.2.0",
     "ts-node": "8.10.1",
-    "typescript": "3.9.3",
+    "typescript": "3.9.7",
     "@types/mocha": "7.0.2",
     "@types/node": "14.0.5",
     "@types/module-alias": "2.0.0"
