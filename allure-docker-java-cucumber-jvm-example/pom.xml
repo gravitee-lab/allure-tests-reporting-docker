@@ -14,7 +14,7 @@
         <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
         <maven-surefire-plugin>2.21.0</maven-surefire-plugin>
 
-        <allure-cucumber-jvm.version>2.7.0</allure-cucumber-jvm.version>
+        <allure-cucumber-jvm.version>2.9.0</allure-cucumber-jvm.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
