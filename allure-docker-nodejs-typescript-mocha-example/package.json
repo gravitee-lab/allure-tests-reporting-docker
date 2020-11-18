@@ -9,7 +9,7 @@
     "allure-test": "npm run clean && npm run build && npm run mocha --config .mocharc.js"
   },
   "dependencies": {
-    "mocha": "7.2.0",
+    "mocha": "8.2.0",
     "allure-mocha": "2.0.0-beta.7",
     "es-abstract": "1.17.5",
     "module-alias": "2.1.0",
